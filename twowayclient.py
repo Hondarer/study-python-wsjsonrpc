@@ -4,12 +4,11 @@ import sys
 import time
 import json
 
-from twisted import logger
 from twisted.internet import defer
 from twisted.internet import task
 from twisted.internet import reactor
 
-from wsjsonrpc import factory, exception
+import wsjsonrpc
 
 from logging import getLogger, config
 with open('log_config.json', 'r') as f:
@@ -29,9 +28,9 @@ def getClientFactory(protocol="ws", hostname="localhost", port=8095, path="jsonr
         url = "{}://{}:{}/{}".format(protocol, hostname, path.lstrip("/"))
     else:
         url = "{}://{}:{}/{}".format(protocol,
-                                      hostname, port, path.lstrip("/"))
+                                     hostname, port, path.lstrip("/"))
 
-    clientFactory = factory.JsonRpcWebSocketClientFactory(url)
+    clientFactory = wsjsonrpc.factory.JsonRpcWebSocketClientFactory(url)
 
     if protocol == "ws":
         reactor.connectTCP(hostname, port, clientFactory)
@@ -39,6 +38,12 @@ def getClientFactory(protocol="ws", hostname="localhost", port=8095, path="jsonr
         reactor.connectSSL(hostname, port, clientFactory)
 
     return clientFactory
+
+
+def timeoutProc(reactor):
+    logger.info("called.")
+    reactor.stop()
+    logger.info("will exit.")
 
 
 @defer.inlineCallbacks
@@ -50,13 +55,15 @@ def main(reactor):
 
     clientFactory.registerMethod("api.v1.pong", _pong)
 
+    timeout = reactor.callLater(5, timeoutProc, reactor)
     protocol = yield clientFactory.getProtocol()
+    timeout.cancel()
 
     result = yield protocol.request("api.v1.ping", {"string": "hello!!"})
     logger.info("result: {}".format(result))
 
     yield protocol.request("api.v1.shutdown")
-    logger.info("exit.")
+    logger.info("will exit.")
 
 
 if __name__ == "__main__":

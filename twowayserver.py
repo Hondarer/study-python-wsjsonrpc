@@ -5,11 +5,10 @@ import threading
 import time
 import json
 
-from twisted import logger
 from twisted.internet import defer
 from twisted.internet import reactor
 
-from wsjsonrpc import factory
+import wsjsonrpc
 
 from logging import getLogger, config
 with open('log_config.json', 'r') as f:
@@ -26,19 +25,18 @@ def _ping(protocol, string):
 
 
 def shutdownCore():
-    time.sleep(1)
     reactor.stop()
 
 
 def _shutdown(protocol):
-    logger.info("called")
-    threading.Thread(target=shutdownCore).start()
+    logger.info("called.")
+    reactor.callLater(0.1, shutdownCore)
     return
 
 
 def main():
     logger.info("started.")
-    serverFactory = factory.JsonRpcWebSocketServerFactory(
+    serverFactory = wsjsonrpc.factory.JsonRpcWebSocketServerFactory(
         "ws://localhost:5000/jsonrpc")
 
     serverFactory.registerMethod("api.v1.ping", _ping)
@@ -46,7 +44,7 @@ def main():
 
     reactor.listenTCP(5000, serverFactory)
     reactor.run()
-    logger.info("exit.")
+    logger.info("will exit.")
 
 
 if __name__ == "__main__":
