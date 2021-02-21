@@ -55,7 +55,7 @@ def main(reactor):
 
     clientFactory.registerMethod("api.v1.pong", _pong)
 
-    timeout = reactor.callLater(5, timeoutProc, reactor)
+    timeout = reactor.callLater(10, timeoutProc, reactor)
     protocol = yield clientFactory.getProtocol()
     timeout.cancel()
 
